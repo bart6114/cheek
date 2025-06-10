@@ -22,6 +22,7 @@ type Schedule struct {
 	OnError            OnEvent             `yaml:"on_error,omitempty" json:"on_error,omitempty"`
 	OnRetriesExhausted OnEvent             `yaml:"on_retries_exhausted,omitempty" json:"on_retries_exhausted,omitempty"`
 	TZLocation         string              `yaml:"tz_location,omitempty" json:"tz_location,omitempty"`
+	Encoding           string              `yaml:"encoding,omitempty" json:"encoding,omitempty"`
 	loc                *time.Location
 	log                zerolog.Logger
 	cfg                Config

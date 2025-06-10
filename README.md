@@ -36,6 +36,7 @@ Everything about how you want the scheduler to function is defined in a schedule
 
 ```yaml
 tz_location: Europe/Brussels # optionally set timezone to adhere to
+encoding: utf-8 # set encoding for job command output (optional, defaults to UTF-8)
 jobs:
   foo:
     command: date
@@ -219,6 +220,38 @@ graph TD
     style R fill:#e8f5e8
     style T fill:#fff3e0
     style U fill:#fff3e0
+```
+
+## Character Encoding
+
+`cheek` supports various character encodings for job command output. This is particularly useful when running commands that output non-UTF-8 text, such as legacy applications or scripts that produce Chinese, Japanese, or Korean characters.
+
+You can specify the encoding globally at the schedule level:
+
+```yaml
+encoding: gbk # Use GBK encoding for all job outputs
+jobs:
+  chinese_report:
+    command: ["python", "generate_chinese_report.py"]
+    cron: "0 9 * * *"
+```
+
+### Supported Encodings
+
+- **UTF-8 variants**: `utf-8`, `utf8`, `ascii` (no transformation applied)
+- **Chinese**: `gbk`, `gb2312`, `cp936`, `gb18030`, `big5`  
+- **Japanese**: `shift-jis`, `shiftjis`, `sjis`, `euc-jp`
+- **Korean**: `euc-kr`
+- **European**: `iso-8859-1`, `latin1`, `windows-1252`, `cp1252`
+
+Encoding names are case-insensitive. If an unsupported encoding is specified, `cheek` will log a warning and fall back to UTF-8.
+
+```yaml
+encoding: GBK # Case insensitive - same as 'gbk'
+jobs:
+  legacy_system:
+    command: ["legacy_app.exe"]
+    cron: "0 */6 * * *"
 ```
 
 ## Docker

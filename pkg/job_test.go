@@ -703,3 +703,75 @@ func TestTriggeredByJobRunContext(t *testing.T) {
 	assert.Equal(t, float64(0), parentContext["status"], "Parent job should have succeeded")
 	assert.Contains(t, parentContext["log"], "parent output", "Parent job log should contain expected output")
 }
+
+func TestGetEncodingTransformer(t *testing.T) {
+	testCases := []struct {
+		name          string
+		encoding      string
+		expectError   bool
+		expectTransformer bool
+	}{
+		{"Empty string", "", false, false},
+		{"UTF-8 uppercase", "UTF-8", false, false},
+		{"UTF-8 lowercase", "utf-8", false, false},
+		{"UTF8 no dash", "utf8", false, false},
+		{"ASCII", "ascii", false, false},
+		{"GBK lowercase", "gbk", false, true},
+		{"GBK uppercase", "GBK", false, true},
+		{"GB18030", "gb18030", false, true},
+		{"Big5", "big5", false, true},
+		{"Shift-JIS", "shift-jis", false, true},
+		{"EUC-KR", "euc-kr", false, true},
+		{"Windows-1252", "windows-1252", false, true},
+		{"Unsupported encoding", "invalid-encoding", true, false},
+		{"Another unsupported", "made-up-encoding", true, false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			transformer, err := getEncodingTransformer(tc.encoding)
+			
+			if tc.expectError {
+				assert.Error(t, err, "Expected error for encoding %s", tc.encoding)
+				assert.Nil(t, transformer, "Expected nil transformer for unsupported encoding %s", tc.encoding)
+				assert.Contains(t, err.Error(), tc.encoding, "Error should mention the unsupported encoding")
+			} else {
+				assert.NoError(t, err, "Expected no error for encoding %s", tc.encoding)
+				if tc.expectTransformer {
+					assert.NotNil(t, transformer, "Expected transformer for encoding %s", tc.encoding)
+				} else {
+					assert.Nil(t, transformer, "Expected no transformer for UTF-8 compatible encoding %s", tc.encoding)
+				}
+			}
+		})
+	}
+}
+
+func TestJobWithEncoding(t *testing.T) {
+	cfg := NewConfig()
+	cfg.SuppressLogs = true
+
+	// Create a schedule with UTF-8 encoding
+	schedule := &Schedule{
+		Encoding: "utf-8",
+		Jobs:     make(map[string]*JobSpec),
+		loc:      time.UTC,
+	}
+
+	j := &JobSpec{
+		Name:           "encoding-test",
+		Command:        []string{"echo", "test output"},
+		cfg:            cfg,
+		log:            NewLogger("debug", nil, os.Stdout, os.Stdout),
+		globalSchedule: schedule,
+	}
+
+	schedule.Jobs["encoding-test"] = j
+
+	jobRun := JobRun{}
+	jr := j.execCommand(context.Background(), jobRun, "test")
+	jr.flushLogBuffer()
+
+	assert.Equal(t, StatusOK, *jr.Status, "Job should succeed with UTF-8 encoding")
+	assert.Contains(t, jr.Log, "test output", "Job output should contain expected text")
+}
