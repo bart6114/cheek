@@ -85,7 +85,7 @@ func TestSpecialCron(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	jobRun := JobRun{}                  // Create a JobRun instance
+	jobRun := JobRun{}                                        // Create a JobRun instance
 	jr := j.execCommand(context.Background(), jobRun, "test") // Pass JobRun instance and "test"
 	assert.Equal(t, *jr.Status, 0)
 }
@@ -134,7 +134,7 @@ env:
 		t.Fatal("should contain foo")
 	}
 
-	jobRun := JobRun{}                  // Create a JobRun instance
+	jobRun := JobRun{}                                        // Create a JobRun instance
 	jr := j.execCommand(context.Background(), jobRun, "test") // Pass JobRun instance and "test"
 
 	jr.flushLogBuffer()
@@ -154,7 +154,7 @@ func TestStdErrOut(t *testing.T) {
 		cfg: cfg,
 	}
 
-	jobRun := JobRun{}                  // Create a JobRun instance
+	jobRun := JobRun{}                                        // Create a JobRun instance
 	jr := j.execCommand(context.Background(), jobRun, "test") // Pass JobRun instance and "test"
 	jr.flushLogBuffer()
 	assert.Contains(t, jr.Log, "stdout")
@@ -173,7 +173,7 @@ func TestFailingLog(t *testing.T) {
 		cfg: cfg,
 	}
 
-	jobRun := JobRun{}                  // Create a JobRun instance
+	jobRun := JobRun{}                                        // Create a JobRun instance
 	jr := j.execCommand(context.Background(), jobRun, "test") // Pass JobRun instance and "test"
 	jr.flushLogBuffer()
 	assert.Contains(t, jr.Log, "this fails")
@@ -186,7 +186,7 @@ func TestJobRunNoCommand(t *testing.T) {
 		cfg:  NewConfig(),
 	}
 
-	jobRun := JobRun{}                  // Create a JobRun instance
+	jobRun := JobRun{}                                        // Create a JobRun instance
 	jr := j.execCommand(context.Background(), jobRun, "test") // Pass JobRun instance and "test"
 	assert.NotEqual(t, jr.Status, 0)
 }
@@ -201,7 +201,7 @@ func TestJobNonZero(t *testing.T) {
 		cfg: NewConfig(),
 	}
 
-	jobRun := JobRun{}                  // Create a JobRun instance
+	jobRun := JobRun{}                                        // Create a JobRun instance
 	jr := j.execCommand(context.Background(), jobRun, "test") // Pass JobRun instance and "test"
 	assert.NotEqual(t, jr.Status, 0)
 }
@@ -246,7 +246,7 @@ func TestOnEventWebhook(t *testing.T) {
 			NotifyWebhook: []string{testServer.URL},
 		},
 	}
-	jobRun := JobRun{}                  // Create a JobRun instance
+	jobRun := JobRun{}                                        // Create a JobRun instance
 	jr := j.execCommand(context.Background(), jobRun, "test") // Pass JobRun instance and "test"
 	j.OnEvent(&jr)
 }
@@ -277,7 +277,7 @@ func TestStringArray(t *testing.T) {
 		}
 
 		j.cfg = NewConfig()
-		jobRun := JobRun{}                  // Create a JobRun instance
+		jobRun := JobRun{}                                        // Create a JobRun instance
 		jr := j.execCommand(context.Background(), jobRun, "test") // Pass JobRun instance and "test"
 
 		jr.flushLogBuffer()
@@ -477,7 +477,7 @@ func TestRetryContextInWebhooks(t *testing.T) {
 
 	// Check the final payload (should be the retries exhausted one)
 	finalPayload := webhookPayloads[len(webhookPayloads)-1]
-	
+
 	// Verify retry context fields are present
 	assert.Equal(t, float64(1), finalPayload["retry_attempt"], "Final retry attempt should be 1")
 	assert.Equal(t, true, finalPayload["retries_exhausted"], "retries_exhausted should be true")
@@ -524,7 +524,7 @@ func TestJobWithBashEval(t *testing.T) {
 	j.log = log
 	j.cfg = cfg
 
-	jobRun := JobRun{}                  // Create a JobRun instance
+	jobRun := JobRun{}                                        // Create a JobRun instance
 	jr := j.execCommand(context.Background(), jobRun, "test") // Pass JobRun instance and "test"
 	jr.flushLogBuffer()
 
@@ -653,7 +653,7 @@ func TestTriggeredByJobRunContext(t *testing.T) {
 
 	// Create a child job that will be triggered by the parent
 	childJob := &JobSpec{
-		Name:    "child-job", 
+		Name:    "child-job",
 		Command: []string{"echo", "child output"},
 		cfg:     NewConfig(),
 		log:     NewLogger("debug", nil, os.Stdout, os.Stdout),
@@ -706,9 +706,9 @@ func TestTriggeredByJobRunContext(t *testing.T) {
 
 func TestGetEncodingTransformer(t *testing.T) {
 	testCases := []struct {
-		name          string
-		encoding      string
-		expectError   bool
+		name              string
+		encoding          string
+		expectError       bool
 		expectTransformer bool
 	}{
 		{"Empty string", "", false, false},
@@ -730,7 +730,7 @@ func TestGetEncodingTransformer(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			transformer, err := getEncodingTransformer(tc.encoding)
-			
+
 			if tc.expectError {
 				assert.Error(t, err, "Expected error for encoding %s", tc.encoding)
 				assert.Nil(t, transformer, "Expected nil transformer for unsupported encoding %s", tc.encoding)
@@ -751,16 +751,16 @@ func TestJobWithEncoding(t *testing.T) {
 	cfg := NewConfig()
 	cfg.SuppressLogs = true
 
-	// Create a schedule with UTF-8 encoding
+	// Create a schedule without encoding (encoding is now at job level)
 	schedule := &Schedule{
-		Encoding: "utf-8",
-		Jobs:     make(map[string]*JobSpec),
-		loc:      time.UTC,
+		Jobs: make(map[string]*JobSpec),
+		loc:  time.UTC,
 	}
 
 	j := &JobSpec{
 		Name:           "encoding-test",
 		Command:        []string{"echo", "test output"},
+		Encoding:       "utf-8", // encoding now specified at job level
 		cfg:            cfg,
 		log:            NewLogger("debug", nil, os.Stdout, os.Stdout),
 		globalSchedule: schedule,

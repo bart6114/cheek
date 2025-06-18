@@ -45,8 +45,8 @@ type JobSpec struct {
 	Cron    string      `yaml:"cron,omitempty" json:"cron,omitempty"`
 	Command stringArray `yaml:"command" json:"command"`
 
-	OnSuccess         OnEvent `yaml:"on_success,omitempty" json:"on_success,omitempty"`
-	OnError           OnEvent `yaml:"on_error,omitempty" json:"on_error,omitempty"`
+	OnSuccess          OnEvent `yaml:"on_success,omitempty" json:"on_success,omitempty"`
+	OnError            OnEvent `yaml:"on_error,omitempty" json:"on_error,omitempty"`
 	OnRetriesExhausted OnEvent `yaml:"on_retries_exhausted,omitempty" json:"on_retries_exhausted,omitempty"`
 
 	Name                       string            `json:"name"`
@@ -54,6 +54,7 @@ type JobSpec struct {
 	Env                        map[string]secret `yaml:"env,omitempty"`
 	WorkingDirectory           string            `yaml:"working_directory,omitempty" json:"working_directory,omitempty"`
 	DisableConcurrentExecution bool              `yaml:"disable_concurrent_execution,omitempty" json:"disable_concurrent_execution,omitempty"`
+	Encoding                   string            `yaml:"encoding,omitempty" json:"encoding,omitempty"`
 	globalSchedule             *Schedule
 	Runs                       []JobRun `json:"runs" yaml:"-"`
 
@@ -72,8 +73,8 @@ func (secret) MarshalText() ([]byte, error) {
 
 // JobRun holds information about a job execution.
 type JobRun struct {
-	LogEntryId        int     `json:"id,omitempty" db:"id"`
-	Status            *int    `json:"status,omitempty" db:"status,omitempty"`
+	LogEntryId        int  `json:"id,omitempty" db:"id"`
+	Status            *int `json:"status,omitempty" db:"status,omitempty"`
 	logBuf            bytes.Buffer
 	Log               string        `json:"log" db:"message"`
 	Name              string        `json:"name" db:"job"`
@@ -224,7 +225,7 @@ func getEncodingTransformer(encodingName string) (encoding.Encoding, error) {
 	if encodingName == "" {
 		return nil, nil // No transformation needed
 	}
-	
+
 	switch strings.ToLower(encodingName) {
 	case "utf-8", "utf8", "ascii":
 		return nil, nil // No transformation needed
@@ -298,15 +299,15 @@ func (j *JobSpec) execCommand(ctx context.Context, jr JobRun, trigger string) Jo
 		}
 	}()
 
-	// Apply encoding transformation if specified in schedule
+	// Apply encoding transformation if specified for job
 	w = baseWriter // Default to base writer
-	
-	if j.globalSchedule != nil && j.globalSchedule.Encoding != "" {
-		if enc, err := getEncodingTransformer(j.globalSchedule.Encoding); err != nil {
-			j.log.Warn().Str("job", j.Name).Str("encoding", j.globalSchedule.Encoding).Err(err).Msg("Unsupported encoding specified, falling back to UTF-8")
+
+	if j.Encoding != "" {
+		if enc, err := getEncodingTransformer(j.Encoding); err != nil {
+			j.log.Warn().Str("job", j.Name).Str("encoding", j.Encoding).Err(err).Msg("Unsupported encoding specified, falling back to UTF-8")
 		} else if enc != nil {
 			w = transform.NewWriter(baseWriter, enc.NewDecoder())
-			j.log.Debug().Str("job", j.Name).Str("encoding", j.globalSchedule.Encoding).Msg("Applying encoding transformation")
+			j.log.Debug().Str("job", j.Name).Str("encoding", j.Encoding).Msg("Applying encoding transformation")
 		}
 	}
 
@@ -372,7 +373,6 @@ func (j *JobSpec) execCommand(ctx context.Context, jr JobRun, trigger string) Jo
 
 	return jr
 }
-
 
 func (j *JobSpec) loadLogFromDb(id int) (JobRun, error) {
 	var jr JobRun
