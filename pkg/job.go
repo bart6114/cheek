@@ -8,11 +8,19 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/adhocore/gronx"
 	"github.com/rs/zerolog"
+	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/encoding/japanese"
+	"golang.org/x/text/encoding/korean"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/encoding/traditionalchinese"
+	"golang.org/x/text/transform"
 	"gopkg.in/yaml.v3"
 )
 
@@ -37,8 +45,8 @@ type JobSpec struct {
 	Cron    string      `yaml:"cron,omitempty" json:"cron,omitempty"`
 	Command stringArray `yaml:"command" json:"command"`
 
-	OnSuccess         OnEvent `yaml:"on_success,omitempty" json:"on_success,omitempty"`
-	OnError           OnEvent `yaml:"on_error,omitempty" json:"on_error,omitempty"`
+	OnSuccess          OnEvent `yaml:"on_success,omitempty" json:"on_success,omitempty"`
+	OnError            OnEvent `yaml:"on_error,omitempty" json:"on_error,omitempty"`
 	OnRetriesExhausted OnEvent `yaml:"on_retries_exhausted,omitempty" json:"on_retries_exhausted,omitempty"`
 
 	Name                       string            `json:"name"`
@@ -46,6 +54,7 @@ type JobSpec struct {
 	Env                        map[string]secret `yaml:"env,omitempty"`
 	WorkingDirectory           string            `yaml:"working_directory,omitempty" json:"working_directory,omitempty"`
 	DisableConcurrentExecution bool              `yaml:"disable_concurrent_execution,omitempty" json:"disable_concurrent_execution,omitempty"`
+	Encoding                   string            `yaml:"encoding,omitempty" json:"encoding,omitempty"`
 	globalSchedule             *Schedule
 	Runs                       []JobRun `json:"runs" yaml:"-"`
 
@@ -64,8 +73,8 @@ func (secret) MarshalText() ([]byte, error) {
 
 // JobRun holds information about a job execution.
 type JobRun struct {
-	LogEntryId        int     `json:"id,omitempty" db:"id"`
-	Status            *int    `json:"status,omitempty" db:"status,omitempty"`
+	LogEntryId        int  `json:"id,omitempty" db:"id"`
+	Status            *int `json:"status,omitempty" db:"status,omitempty"`
 	logBuf            bytes.Buffer
 	Log               string        `json:"log" db:"message"`
 	Name              string        `json:"name" db:"job"`
@@ -208,6 +217,38 @@ func (j *JobSpec) execCommandWithRetry(ctx context.Context, trigger string, pare
 	return jr
 }
 
+// getEncodingTransformer returns the appropriate encoding transformer for the given encoding name
+// Returns (nil, nil) for UTF-8 compatible encodings (no transformation needed)
+// Returns (transformer, nil) for supported encodings that need transformation
+// Returns (nil, error) for unsupported encodings
+func getEncodingTransformer(encodingName string) (encoding.Encoding, error) {
+	if encodingName == "" {
+		return nil, nil // No transformation needed
+	}
+
+	switch strings.ToLower(encodingName) {
+	case "utf-8", "utf8", "ascii":
+		return nil, nil // No transformation needed
+	case "gbk", "gb2312", "cp936":
+		return simplifiedchinese.GBK, nil
+	case "gb18030":
+		return simplifiedchinese.GB18030, nil
+	case "big5":
+		return traditionalchinese.Big5, nil
+	case "shift-jis", "shiftjis", "sjis":
+		return japanese.ShiftJIS, nil
+	case "euc-jp":
+		return japanese.EUCJP, nil
+	case "euc-kr":
+		return korean.EUCKR, nil
+	case "iso-8859-1", "latin1":
+		return charmap.ISO8859_1, nil
+	case "windows-1252", "cp1252":
+		return charmap.Windows1252, nil
+	default:
+		return nil, fmt.Errorf("unsupported encoding: %s", encodingName)
+	}
+}
 
 func (j *JobSpec) now() time.Time {
 	// defer for if schedule doesn't exist, allows for easy testing
@@ -249,11 +290,25 @@ func (j *JobSpec) execCommand(ctx context.Context, jr JobRun, trigger string) Jo
 	cmd.Dir = j.WorkingDirectory
 
 	var w io.Writer
-	switch j.cfg.SuppressLogs {
-	case true:
-		w = &jr.logBuf
-	default:
-		w = io.MultiWriter(os.Stdout, &jr.logBuf)
+	baseWriter := func() io.Writer {
+		switch j.cfg.SuppressLogs {
+		case true:
+			return &jr.logBuf
+		default:
+			return io.MultiWriter(os.Stdout, &jr.logBuf)
+		}
+	}()
+
+	// Apply encoding transformation if specified for job
+	w = baseWriter // Default to base writer
+
+	if j.Encoding != "" {
+		if enc, err := getEncodingTransformer(j.Encoding); err != nil {
+			j.log.Warn().Str("job", j.Name).Str("encoding", j.Encoding).Err(err).Msg("Unsupported encoding specified, falling back to UTF-8")
+		} else if enc != nil {
+			w = transform.NewWriter(baseWriter, enc.NewDecoder())
+			j.log.Debug().Str("job", j.Name).Str("encoding", j.Encoding).Msg("Applying encoding transformation")
+		}
 	}
 
 	// Merge stdout and stderr to same writer
@@ -318,7 +373,6 @@ func (j *JobSpec) execCommand(ctx context.Context, jr JobRun, trigger string) Jo
 
 	return jr
 }
-
 
 func (j *JobSpec) loadLogFromDb(id int) (JobRun, error) {
 	var jr JobRun

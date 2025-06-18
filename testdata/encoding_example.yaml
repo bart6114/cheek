@@ -1,0 +1,31 @@
+tz_location: Europe/Brussels
+jobs:
+  utf8_job:
+    command: echo "UTF-8 text output"
+    cron: "0 */6 * * *"
+    encoding: utf-8
+  
+  windows_job:
+    command: echo "Windows-1252 encoded output"
+    cron: "0 */12 * * *"
+    encoding: windows-1252
+  
+  chinese_job:
+    command: echo "GBK encoded Chinese text"
+    encoding: gbk
+  
+  japanese_job:
+    command: echo "Shift-JIS encoded Japanese text"
+    encoding: shift-jis
+    retries: 2
+    on_error:
+      notify_webhook:
+        - https://webhook.site/encoding-error
+  
+  mixed_encoding_trigger:
+    command: echo "This job triggers different encoding jobs"
+    cron: "0 8 * * *"
+    on_success:
+      trigger_job:
+        - utf8_job
+        - chinese_job
