@@ -107,7 +107,7 @@ jobs:
           else
             echo "ext=" >> $GITHUB_OUTPUT
           fi
-      - run: env GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -ldflags="-X 'github.com/bart6114/cheek/pkg.version=${{ needs.version_tag.outputs.new_tag }}' -X 'github.com/bart6114/cheek/pkg.commitSHA=${{ steps.vars.outputs.sha_short }}'" -o ${{ matrix.goos }}/${{ matrix.goarch }}/cheek${{ steps.binary_ext.outputs.ext }}
+      - run: env GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -ldflags="-X 'github.com/bart6114/cheek/pkg.Version=${{ needs.version_tag.outputs.new_tag }}' -X 'github.com/bart6114/cheek/pkg.version=${{ needs.version_tag.outputs.new_tag }}' -X 'github.com/bart6114/cheek/pkg.commitSHA=${{ steps.vars.outputs.sha_short }}'" -o ${{ matrix.goos }}/${{ matrix.goarch }}/cheek${{ steps.binary_ext.outputs.ext }}
       - run: cp ${{ matrix.goos }}/${{ matrix.goarch }}/cheek${{ steps.binary_ext.outputs.ext }} ${{ matrix.goos }}/${{ matrix.goarch }}/cheek-${{ matrix.goos }}-${{ matrix.goarch }}${{ steps.binary_ext.outputs.ext }}
       ## upload artifacts for release
       - uses: actions/upload-artifact@v4
