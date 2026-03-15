@@ -8,11 +8,14 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"sync"
 	"time"
 
 	"github.com/adhocore/gronx"
 	"github.com/rs/zerolog"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
 	"gopkg.in/yaml.v3"
 )
 
@@ -256,7 +259,11 @@ func (j *JobSpec) execCommand(ctx context.Context, jr JobRun, trigger string) Jo
 	case true:
 		w = &jr.logBuf
 	default:
-		w = io.MultiWriter(os.Stdout, &jr.logBuf)
+		if runtime.GOOS == "windows" {
+			w = transform.NewWriter(io.MultiWriter(os.Stdout, &jr.logBuf), simplifiedchinese.GB18030.NewDecoder().Transformer)
+		} else {
+			w = io.MultiWriter(os.Stdout, &jr.logBuf)
+		}
 	}
 
 	// Merge stdout and stderr to same writer
