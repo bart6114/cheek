@@ -2,7 +2,7 @@ module github.com/bart6114/cheek
 
 go 1.25.6
 
-require github.com/stretchr/testify v1.10.0
+require github.com/stretchr/testify v1.11.1
 
 require (
 	github.com/adhocore/gronx v1.19.6
