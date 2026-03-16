@@ -7,7 +7,7 @@ jobs:
   golangci:
     runs-on: ubuntu-latest
     steps: 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: '0'
       - uses: actions/setup-go@v5
@@ -27,7 +27,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: '0'
       - uses: actions/setup-go@v5
@@ -50,7 +50,7 @@ jobs:
     outputs:
       new_tag: ${{ steps.tag_action.outputs.new_tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: '0'
       - name: Bump version and push tag
@@ -79,7 +79,7 @@ jobs:
           - goarch: "386"
             goos: windows
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: '0'
       ## build tailwind assets
@@ -148,7 +148,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: '0'
       - name: Set up QEMU
@@ -186,7 +186,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: '0'
           submodules: true
